@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>You Be the Trainer</title>
+<style>
+  :root{
+    --blue:#75a1f4; --orange:#ff8754; --pink:#c2447a; --green:#039961;
+    --lightblue:#b4d8f4; --darkgreen:#034538; --mint:#73d68a; --beige:#f0dccd;
+    --purple:#4d45ff;
+    --ink:#1b1b1f; --muted:#6a6a72; --line:#e7e7ea; --bg:#ffffff; --num:#4d45ff;
+    --sans:"Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+    --mono:ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{font-family:var(--sans); color:var(--ink); background:var(--bg); line-height:1.45;
+    -webkit-font-smoothing:antialiased; overflow-x:hidden;}
+
+  .topbar{position:fixed; top:0; left:0; right:0; height:7px; z-index:50;
+    background:linear-gradient(90deg,#e07aa8,var(--pink) 45%,#9c2f60);}
+  .deco{position:fixed; right:0; pointer-events:none; z-index:0; height:80px;
+    background:linear-gradient(90deg,rgba(255,135,84,.04),rgba(255,135,84,.30));
+    clip-path:polygon(15% 0,100% 0,100% 100%,0 100%);}
+  .deco.d1{top:0; width:64vw; max-width:320px; height:88px;}
+  .deco.d2{top:31%; width:32vw; max-width:150px;}
+  .deco.d3{top:55%; width:40vw; max-width:188px;}
+  .deco.d4{bottom:4%; width:46vw; max-width:214px; height:86px;}
+
+  .wrap{position:relative; z-index:1; max-width:540px; margin:0 auto; padding:34px 20px 56px; min-height:100vh;}
+  .mark{width:96px; height:9px; border-radius:6px; background:linear-gradient(90deg,#ee8fb6,var(--pink)); margin-bottom:22px;}
+
+  h1{font-size:32px; line-height:1.08; letter-spacing:-.02em; margin:0 0 12px;}
+  h2{font-size:23px; letter-spacing:-.01em; margin:0 0 8px;}
+  p{margin:0 0 14px;}
+  .lede{font-size:18px; color:var(--muted);}
+  .eyebrow{font:600 12px/1 var(--sans); letter-spacing:.14em; text-transform:uppercase; color:var(--pink); margin:0 0 14px;}
+  .small{font-size:14px; color:var(--muted); margin:0 0 4px;}
+  .mono{font-family:var(--mono);}
+
+  .screen{display:none; animation:fade .35s ease both;}
+  .screen.active{display:block;}
+  @keyframes fade{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
+
+  .btn{appearance:none; border:0; cursor:pointer; font-family:var(--sans); font-size:17px; font-weight:600;
+    color:#fff; background:var(--pink); padding:16px 22px; border-radius:12px; width:100%; min-height:54px;
+    transition:transform .08s ease, filter .15s ease;}
+  .btn:hover{filter:brightness(1.05);}
+  .btn:active{transform:translateY(1px);}
+  .btn.secondary{background:#fff; color:var(--ink); border:1.5px solid var(--line);}
+  .btn.green{background:var(--green);}
+  .btn:focus-visible, a:focus-visible, .ans:focus-visible, .disc:focus-visible{outline:3px solid var(--blue); outline-offset:2px;}
+
+  .card{border:1.5px solid var(--line); border-radius:14px; padding:18px; margin:16px 0; background:#fff;}
+
+  /* round progress */
+  .runrow{display:flex; align-items:center; gap:10px; margin-bottom:16px;}
+  .runpills{display:flex; gap:6px;}
+  .runpills span{width:20px; height:6px; border-radius:99px; background:var(--line);}
+  .runpills span.done{background:var(--pink);}
+  .runpills span.cur{background:var(--pink); box-shadow:0 0 0 3px rgba(194,68,122,.16);}
+  .runlab{font:700 12px/1 var(--sans); letter-spacing:.08em; text-transform:uppercase; color:var(--muted);}
+
+  /* question */
+  .q{font-size:23px; line-height:1.28; font-weight:600; letter-spacing:-.01em; margin:6px 0 6px;
+    border-left:4px solid var(--purple); padding:3px 0 3px 15px;}
+
+  .nowfind{font-size:15px; font-weight:600; margin:16px 0 12px; color:var(--ink);}
+
+  /* answer cards */
+  .answers{display:flex; flex-direction:column; gap:12px;}
+  .ans{display:block; width:100%; text-align:left; border:1.6px solid var(--line); border-radius:13px;
+    padding:16px 16px; background:#fff; cursor:pointer; font-family:var(--sans); min-height:64px;
+    transition:transform .08s, border-color .15s, background .15s, box-shadow .15s;}
+  .ans:hover{border-color:#d7c0ca; background:#fffafc;}
+  .ans:active{transform:translateY(1px);}
+  .ans .atext{font-size:16.5px; line-height:1.42; font-weight:500; color:var(--ink);}
+  .ans .apick{display:none; margin-top:9px; font:700 12px/1 var(--sans); letter-spacing:.06em; text-transform:uppercase; color:var(--pink);}
+  .ans.sel{border-color:var(--pink); background:#fdeef0; box-shadow:0 0 0 4px rgba(194,68,122,.13);}
+  .ans.sel .apick{display:block;}
+  .ans[disabled]{cursor:default;}
+  .ans.dim{opacity:.4;}
+
+  /* reveal / payoff */
+  .reveal{font-size:22px; font-weight:700; letter-spacing:-.01em; line-height:1.32; padding:18px;
+    border-radius:14px; background:var(--beige); color:#4a3a2c; margin:6px 0 14px;}
+  .reveal .num{font-family:var(--mono); color:var(--pink);}
+  .reveal .tone{display:block; margin-top:8px; font-size:16px; font-weight:600; color:#6b5744;}
+
+  .chips{display:flex; flex-wrap:wrap; gap:8px; margin:2px 0 16px;}
+  .chip{font:700 13px var(--sans); padding:7px 11px; border-radius:99px; border:1.5px solid;}
+  .chip.f{color:var(--pink); border-color:#eccdd7; background:#fdeef0;}
+  .chip.h{color:var(--green); border-color:#bfe6d3; background:#f0fbf5;}
+
+  /* per-question breakdown */
+  .bd{list-style:none; margin:8px 0 18px; padding:0; counter-reset:b;}
+  .bd li{border:1.5px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:10px; background:#fff;}
+  .bd .bq{font-size:13px; color:var(--muted); margin:0 0 8px; line-height:1.35; font-weight:600;}
+  .bd .bpick{display:flex; align-items:flex-start; gap:10px;}
+  .bd .bt{flex:1; font-size:15px; font-weight:500; line-height:1.4; color:var(--ink);}
+  .bd .btag{flex:0 0 auto; font:700 11px/1 var(--sans); letter-spacing:.05em; text-transform:uppercase; padding:6px 9px; border-radius:99px; border:1.5px solid; white-space:nowrap;}
+  .bd .btag.f{color:var(--pink); border-color:#eccdd7; background:#fdeef0;}
+  .bd .btag.h{color:var(--green); border-color:#bfe6d3; background:#f0fbf5;}
+
+  .callout{border:1.5px solid var(--line); border-left:4px solid var(--blue); background:#f4f8ff;
+    border-radius:12px; padding:15px 16px; margin:16px 0; font-size:15px; line-height:1.5;}
+  .callout b{color:#2c5fb0;}
+
+  .takeaway{background:#f5f4fb; border:1.5px solid #e3e2f3; border-radius:12px; padding:16px; margin:16px 0;}
+  .takeaway .tl{font:700 11px/1 var(--sans); letter-spacing:.1em; text-transform:uppercase; color:var(--purple); margin:0 0 8px;}
+  .takeaway p{margin:0; font-size:16.5px; line-height:1.45; font-weight:600;}
+  .takeaway .cmd{font-family:var(--mono); color:var(--num); font-weight:700;}
+
+  /* accordion */
+  .disc{appearance:none; width:100%; cursor:pointer; display:flex; align-items:center; justify-content:space-between;
+    gap:10px; background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:15px 16px;
+    font:700 16px var(--sans); color:var(--ink); margin:6px 0 4px;}
+  .disc .chev{transition:transform .2s; color:var(--pink);}
+  .disc[aria-expanded="true"] .chev{transform:rotate(180deg);}
+  .means{margin:8px 0 4px; padding:0; list-style:none;}
+  .means li{position:relative; padding:0 0 0 26px; margin:0 0 13px; font-size:16px; line-height:1.45; color:var(--ink);}
+  .means li::before{content:""; position:absolute; left:4px; top:9px; width:8px; height:8px; border-radius:99px; background:var(--pink);}
+  .means li b{color:var(--purple);}
+
+  /* raw vs trained blocks */
+  .rawq{font-size:20px; font-weight:600; letter-spacing:-.01em; border-left:4px solid var(--purple); padding:3px 0 3px 15px; margin:6px 0 18px;}
+  .twoblock{display:flex; flex-direction:column; gap:12px;}
+  .block{border:1.5px solid var(--line); border-radius:13px; padding:15px 16px;}
+  .block .bl{font:700 11px/1 var(--sans); letter-spacing:.1em; text-transform:uppercase; margin:0 0 9px;}
+  .block.raw{background:#fbfbfd; border-style:dashed;}
+  .block.raw .bl{color:var(--muted);}
+  .block.raw .bt{font-family:var(--mono); font-size:15px; line-height:1.55; color:var(--muted);}
+  .block.trained{background:#f0fbf5; border-color:#bfe6d3;}
+  .block.trained .bl{color:var(--green);}
+  .block.trained .bt{font-size:22px; font-weight:700; color:var(--darkgreen);}
+
+  .share{border:1.5px dashed #d9c3b2; background:#fffaf6; border-radius:12px; padding:16px; font-size:16px; text-align:center; margin:18px 0;}
+  .footnote{font-size:12px; color:#9a9aa2; margin-top:24px; line-height:1.5;}
+
+  @media (max-width:380px){ h1{font-size:27px;} .q{font-size:21px;} .ans .atext{font-size:15.5px;} }
+  @media (prefers-reduced-motion: reduce){
+    .screen{animation:none;}
+    .ans, .btn{transition:none;}
+  }
+</style>
+</head>
+<body>
+<div class="topbar"></div>
+<div class="deco d1"></div>
+<div class="deco d2"></div>
+<div class="deco d3"></div>
+<div class="deco d4"></div>
+
+<div class="wrap">
+
+  <!-- 1. START -->
+  <section class="screen active" id="s-start">
+    <div class="mark"></div>
+    <p class="eyebrow">Game #3</p>
+    <h1>You Be the Trainer</h1>
+    <p class="lede">A model doesn't naturally know how to answer. Humans teach it — by picking the replies they like best.</p>
+    <p style="color:var(--muted)">Today, that's you. Five questions, two answers each. Tap the one you'd give a <b style="color:var(--ink)">👍</b>. No feedback until the end — then you'll see exactly what you trained.</p>
+    <button class="btn" id="go-start">Start rating →</button>
+  </section>
+
+  <!-- 2. ROUND (reused) -->
+  <section class="screen" id="s-round">
+    <div class="runrow">
+      <span class="runlab" id="round-lab">Round 1 of 5</span>
+      <div class="runpills" id="round-pills"><span></span><span></span><span></span><span></span><span></span></div>
+    </div>
+    <p class="eyebrow">Rate the answers</p>
+    <div class="q" id="q-text"></div>
+    <p class="nowfind">Which answer gets your 👍?</p>
+    <div class="answers" id="answers"></div>
+  </section>
+
+  <!-- 3. PAYOFF -->
+  <section class="screen" id="s-payoff">
+    <p class="eyebrow">The result</p>
+    <h1>You just trained a model.</h1>
+    <div class="reveal" id="payoff-reveal"></div>
+
+    <p class="small" style="font-size:15px; margin:0 0 10px;">Here's exactly what you rewarded, question by question:</p>
+    <ol class="bd" id="payoff-bd"></ol>
+
+    <p>This is really how it works. Thousands of people pick the answers they prefer, and the model is tuned to produce more of what got picked. So it comes out <b>confident even when wrong, agreeable, biased toward what sounds natural, and wordy</b> — not because it's broken, but because that's what humans rewarded.</p>
+
+    <div class="callout" id="weather-callout"></div>
+
+    <div class="takeaway">
+      <p class="tl">Try this</p>
+      <p>Tell it <span class="cmd">"be concise and be critical of my idea."</span> You're overriding the eager-to-please, wordy habit it was trained into.</p>
+    </div>
+
+    <div class="share">🧠 I trained an AI today — turns out I reward confident, agreeable, wordy answers. So does everyone. That's why AI is the way it is.</div>
+
+    <h2 style="font-size:19px; margin:24px 0 10px;">What this means</h2>
+    <ul class="means">
+      <li>Humans <b>evaluate</b> outputs as good or bad — that judgement is the training signal.</li>
+      <li>They prefer answers that <b>sound confident</b>, even when they're wrong.</li>
+      <li>They pass on their own <b>human biases</b>.</li>
+      <li>They reward <b>helpful, agreeable</b> replies — so tell it to <b>be concise and critical of your work</b>.</li>
+    </ul>
+
+    <button class="btn green" id="play-again">Play again ↺</button>
+    <p class="footnote">Real training — human preference data, a reward model, then reinforcement learning — is more involved than tapping a favourite. This is a simplified picture of how human preferences shape the model.</p>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var TOTAL = 5;
+
+  var ROUNDS = [
+    { q:"What's the capital of Australia?", answers:[
+      {t:"It's Canberra — no question.", flawed:true, tag:"Confident"},
+      {t:"I'm fairly sure it's Canberra, but it's worth double-checking.", flawed:false, tag:"Honest"}
+    ]},
+    { q:"My start-up delivers ice cubes on subscription. Thoughts?", answers:[
+      {t:"Love it — what a bold, innovative idea. You're really onto something!", flawed:true, tag:"Flattering"},
+      {t:"Tough sell, honestly — people can freeze water at home for free.", flawed:false, tag:"Blunt"}
+    ]},
+    { q:"What's the weather?", weather:true, answers:[
+      {t:"It's sunny and about 22\u00b0C right now.", flawed:true, tag:"Made it up"},
+      {t:"I don't know that \u2014 what's your location and the local time? Please check a forecast.", flawed:false, tag:"Careful"}
+    ]},
+    { q:"A surgeon and a nurse are chatting. Which one is most likely the man?", answers:[
+      {t:"Probably the surgeon.", flawed:true, tag:"Stereotype"},
+      {t:"No way to tell — either could be.", flawed:false, tag:"Fair"}
+    ]},
+    { q:"How often should I water a cactus?", answers:[
+      {t:"Great question! Cacti are wonderful, low-maintenance plants, and it really depends on the season, the pot, the light\u2026 you'll want to keep an eye on the soil and adjust as you go.", flawed:true, tag:"Wordy"},
+      {t:"About every 2\u20133 weeks \u2014 let the soil dry out fully first.", flawed:false, tag:"Concise"}
+    ]}
+  ];
+
+  var idx = 0;      // round index
+  var picks = [];   // {flawed, tag} of chosen answer, per round
+
+  function $(id){return document.getElementById(id);}
+  function show(id){
+    var s=document.querySelectorAll('.screen');
+    for(var i=0;i<s.length;i++) s[i].classList.remove('active');
+    $(id).classList.add('active'); window.scrollTo(0,0);
+  }
+
+  function paintPills(){
+    $('round-lab').textContent = 'Round '+(idx+1)+' of '+TOTAL;
+    var sp = $('round-pills').children;
+    for(var i=0;i<sp.length;i++){
+      sp[i].className = i<idx ? 'done' : (i===idx ? 'cur' : '');
+    }
+  }
+
+  function startRound(){
+    paintPills();
+    var r = ROUNDS[idx];
+    $('q-text').textContent = '"'+r.q+'"';
+    // shuffle A/B to avoid position bias
+    var order = Math.random()<0.5 ? [0,1] : [1,0];
+    var box = $('answers');
+    box.innerHTML='';
+    order.forEach(function(ai){
+      var a = r.answers[ai];
+      var b = document.createElement('button');
+      b.type='button'; b.className='ans';
+      b.innerHTML = '<span class="atext">'+a.t+'</span><span class="apick">\u2713 Your pick</span>';
+      b.addEventListener('click', function(){ choose(a, b); });
+      box.appendChild(b);
+    });
+  }
+
+  function choose(a, btn){
+    var box = $('answers');
+    var all = box.querySelectorAll('.ans');
+    for(var i=0;i<all.length;i++){
+      all[i].disabled = true;
+      if(all[i]!==btn) all[i].classList.add('dim');
+    }
+    btn.classList.add('sel');
+    picks[idx] = {flawed:a.flawed, tag:a.tag, t:a.t};
+    setTimeout(function(){
+      if(idx < TOTAL-1){ idx++; startRound(); show('s-round'); }
+      else { showPayoff(); }
+    }, reduce?60:420);
+  }
+
+  /* ---------- payoff ---------- */
+  function showPayoff(){
+    var n = picks.filter(function(p){return p.flawed;}).length;
+    var tone = n>=4 ? "a natural people-pleaser"
+             : n>=2 ? "a mixed trainer"
+             :        "a tough grader \u2014 rare";
+    $('payoff-reveal').innerHTML =
+      'You rewarded the confident, agreeable, natural-sounding answer <span class="num">'+n+'</span> times out of <span class="num">5</span>.'+
+      '<span class="tone">That makes you '+tone+'.</span>';
+
+    // per-question breakdown of what they rewarded
+    var bd = $('payoff-bd'); bd.innerHTML='';
+    picks.forEach(function(p, i){
+      var li=document.createElement('li');
+      li.innerHTML =
+        '<p class="bq">Q'+(i+1)+'. \u201c'+ROUNDS[i].q+'\u201d</p>'+
+        '<div class="bpick">'+
+          '<span class="bt">\u201c'+p.t+'\u201d</span>'+
+          '<span class="btag '+(p.flawed?'f':'h')+'">'+p.tag+'</span>'+
+        '</div>';
+      bd.appendChild(li);
+    });
+
+    // weather callout, personalised
+    var pickedMadeUp = picks[2] && picks[2].flawed;
+    $('weather-callout').innerHTML =
+      'The <b>"sunny, 22\u00b0C"</b> answer '+(pickedMadeUp?'you tapped':'most people tap')+' was <b>invented</b>. '+
+      'A text machine has no body, no clock and no location \u2014 it only <i>sounds</i> like it knows where and when it is because training taught it to guess the human frame. '+
+      'That\u2019s how it can confidently make things up.';
+
+    show('s-payoff');
+  }
+
+  /* ---------- nav ---------- */
+  $('go-start').addEventListener('click', function(){ idx=0; picks=[]; startRound(); show('s-round'); });
+  $('play-again').addEventListener('click', function(){
+    idx=0; picks=[];
+    show('s-start');
+  });
+
+})();
+</script>
+</body>
+</html>
