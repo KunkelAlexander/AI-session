@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Through Robot Eyes</title>
+<style>
+  :root{
+    --blue:#75a1f4; --orange:#ff8754; --pink:#c2447a; --green:#039961;
+    --lightblue:#b4d8f4; --darkgreen:#034538; --mint:#73d68a; --beige:#f0dccd;
+    --purple:#4d45ff;
+    --ink:#1b1b1f; --muted:#6a6a72; --line:#e7e7ea; --bg:#ffffff; --num:#4d45ff;
+    --sans:"Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+    --mono:ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{font-family:var(--sans); color:var(--ink); background:var(--bg); line-height:1.45;
+    -webkit-font-smoothing:antialiased; overflow-x:hidden;}
+
+  .topbar{position:fixed; top:0; left:0; right:0; height:7px; z-index:50;
+    background:linear-gradient(90deg,#e07aa8,var(--pink) 45%,#9c2f60);}
+  /* branded coral parallelogram stripes down the right edge (from the T&E slide) */
+  .deco{position:fixed; right:0; pointer-events:none; z-index:0; height:80px;
+    background:linear-gradient(90deg,rgba(255,135,84,.04),rgba(255,135,84,.30));
+    clip-path:polygon(15% 0,100% 0,100% 100%,0 100%);}
+  .deco.d1{top:0; width:64vw; max-width:320px; height:88px;}   /* longest */
+  .deco.d2{top:31%; width:32vw; max-width:150px;}
+  .deco.d3{top:55%; width:40vw; max-width:188px;}
+  .deco.d4{bottom:4%; width:46vw; max-width:214px; height:86px;}
+
+  .wrap{position:relative; z-index:1; max-width:540px; margin:0 auto; padding:34px 20px 56px; min-height:100vh;}
+  .mark{width:96px; height:9px; border-radius:6px; background:linear-gradient(90deg,#ee8fb6,var(--pink)); margin-bottom:22px;}
+
+  h1{font-size:32px; line-height:1.08; letter-spacing:-.02em; margin:0 0 12px;}
+  h2{font-size:23px; letter-spacing:-.01em; margin:0 0 8px;}
+  p{margin:0 0 14px;}
+  .lede{font-size:18px; color:var(--muted);}
+  .eyebrow{font:600 12px/1 var(--sans); letter-spacing:.14em; text-transform:uppercase; color:var(--pink); margin:0 0 14px;}
+  .small{font-size:14px; color:var(--muted); margin:0 0 4px;}
+  .mono{font-family:var(--mono);}
+
+  .screen{display:none; animation:fade .35s ease both;}
+  .screen.active{display:block;}
+  @keyframes fade{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
+
+  .btn{appearance:none; border:0; cursor:pointer; font-family:var(--sans); font-size:17px; font-weight:600;
+    color:#fff; background:var(--pink); padding:16px 22px; border-radius:12px; width:100%; min-height:54px;
+    transition:transform .08s ease, filter .15s ease;}
+  .btn:hover{filter:brightness(1.05);}
+  .btn:active{transform:translateY(1px);}
+  .btn.secondary{background:#fff; color:var(--ink); border:1.5px solid var(--line);}
+  .btn.green{background:var(--green);}
+  .btn:focus-visible, a:focus-visible, .opt:focus-visible{outline:3px solid var(--blue); outline-offset:2px;}
+
+  .card{border:1.5px solid var(--line); border-radius:14px; padding:18px; margin:16px 0; background:#fff;}
+
+  .stepdot{display:flex; gap:7px; margin-bottom:18px;}
+  .stepdot span{height:6px; border-radius:99px; background:var(--line); flex:1;}
+  .stepdot span.on{background:var(--pink);}
+
+  /* slots being built */
+  .bslots{display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 4px;}
+  .bslot{flex:1 1 60px; min-width:56px; border:1.8px solid var(--line); border-radius:11px;
+    padding:8px 6px; text-align:center; background:#fff; transition:border-color .2s, box-shadow .2s, background .2s;}
+  .bslot .g{font-size:13px; line-height:1.2;}
+  .bslot .f{margin-top:5px; line-height:1.2; min-height:22px;}
+  .bslot .f.empty{color:#cfcfd6;}
+  .bslots.enc .g{color:var(--ink); font-weight:600;}
+  .bslots.enc .f{font-family:var(--mono); color:var(--num); font-weight:700; font-size:18px;}
+  .bslots.dec .g{font-family:var(--mono); color:var(--num); font-weight:700; font-size:16px;}
+  .bslots.dec .f{font-size:16px; font-weight:600;}
+  .bslot.cur{border-color:var(--pink); box-shadow:0 0 0 4px rgba(194,68,122,.13);}
+  .bslot.done{background:#fbfbfe; border-color:#e3e2f3;}
+
+  .nowfind{font-size:15px; font-weight:600; margin:18px 0 10px;}
+  .nowfind b{color:var(--pink);}
+
+  /* tappable pool */
+  .pool{display:flex; flex-wrap:wrap; gap:8px;}
+  .opt{display:flex; gap:9px; align-items:center; border:1.6px solid var(--line); border-radius:11px;
+    padding:10px 13px; background:#fff; cursor:pointer; font-family:var(--sans); min-height:46px;
+    transition:transform .08s, border-color .15s, background .15s;}
+  .opt:hover{background:#fafafb;}
+  .opt:active{transform:translateY(1px);}
+  .opt .ot{font-size:16px; font-weight:600; color:var(--ink);}
+  .opt .on{font-family:var(--mono); font-size:15px; font-weight:700; color:var(--num);}
+  .opt[disabled]{opacity:.32; cursor:default; pointer-events:none;}
+  .opt.flash{border-color:var(--pink); background:#fdeef0; animation:shake .32s ease;}
+  @keyframes shake{0%,100%{transform:none;}25%{transform:translateX(-4px);}75%{transform:translateX(4px);}}
+
+  .hint{display:none; margin-top:13px; font-size:14px; font-weight:500;}
+  .hint.show{display:block; color:#a31843;}
+
+  .undo{margin-top:16px; background:none; border:0; color:var(--muted); font:600 14px var(--sans);
+    cursor:pointer; padding:6px 0;}
+  .undo:hover{color:var(--ink);}
+  .undo:disabled{opacity:.4; cursor:default;}
+
+  /* encode reveal */
+  .codebig{font-family:var(--mono); font-size:21px; font-weight:700; color:var(--num); letter-spacing:.04em;
+    background:#f5f4fb; border:1.5px solid #e3e2f3; border-radius:12px; padding:16px; text-align:center;
+    word-spacing:4px; line-height:1.6;}
+
+  /* machine */
+  .machine{border:1.5px solid var(--line); border-radius:14px; padding:20px 16px;
+    background:linear-gradient(180deg,#fbfbfe,#f5f4fb); overflow:hidden;}
+  .stream{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; min-height:38px;}
+  .ntok{font-family:var(--mono); font-weight:700; font-size:14px; padding:6px 9px; border-radius:8px;
+    background:#fff; border:1.5px solid var(--line); color:var(--num); opacity:0; transform:translateY(6px);}
+  .ntok.in{animation:pop .3s ease forwards;}
+  .ntok.out{color:var(--green); border-color:#bfe6d3; background:#f0fbf5;}
+  @keyframes pop{to{opacity:1; transform:none;}}
+  .grid{display:grid; grid-template-columns:repeat(6,1fr); gap:9px; margin:18px 0; padding:4px;}
+  .node{aspect-ratio:1; border-radius:50%; background:#e4e3ef; transition:background .25s, transform .25s, box-shadow .25s;}
+  .node.lit{background:var(--purple); transform:scale(1.18); box-shadow:0 0 0 4px rgba(77,69,255,.16);}
+  .churn{text-align:center; font:700 12px/1 var(--sans); letter-spacing:.1em; text-transform:uppercase; color:var(--purple); margin:2px 0 0; opacity:.85;}
+
+  /* payoff */
+  .reveal{font-size:24px; font-weight:700; letter-spacing:-.01em; line-height:1.25; padding:18px;
+    border-radius:14px; background:var(--beige); color:#4a3a2c; margin:6px 0 18px;}
+  .reveal .hl{color:var(--pink);}
+  .strawviz{font-family:var(--mono); font-size:22px; text-align:center; margin:16px 0; letter-spacing:.06em;}
+  .strawviz .r{color:var(--pink); font-weight:800;}
+  .countbox{display:flex; gap:12px; margin:14px 0;}
+  .countcell{flex:1; border:1.5px solid var(--line); border-radius:12px; padding:14px; text-align:center;}
+  .countcell .big{font-size:36px; font-weight:800; line-height:1; font-family:var(--mono);}
+  .countcell.wrong .big{color:var(--pink);} .countcell.right .big{color:var(--green);}
+  .countcell .lab{font-size:12px; color:var(--muted); margin-top:6px; text-transform:uppercase; letter-spacing:.08em;}
+  .share{border:1.5px dashed #d9c3b2; background:#fffaf6; border-radius:12px; padding:16px; font-size:16px; text-align:center; margin:18px 0;}
+
+  .footnote{font-size:12px; color:#9a9aa2; margin-top:24px; line-height:1.5;}
+
+  @media (max-width:380px){ h1{font-size:27px;} .grid{grid-template-columns:repeat(5,1fr);} }
+  @media (prefers-reduced-motion: reduce){
+    .screen{animation:none;}
+    .ntok{opacity:1 !important; transform:none !important; animation:none !important;}
+    .opt.flash{animation:none;}
+  }
+</style>
+</head>
+<body>
+<div class="topbar"></div>
+<div class="deco d1"></div>
+<div class="deco d2"></div>
+<div class="deco d3"></div>
+<div class="deco d4"></div>
+
+<div class="wrap">
+
+  <!-- 1. START -->
+  <section class="screen active" id="s-start">
+    <div class="mark"></div>
+    <p class="eyebrow">Game #1</p>
+    <h1>Through&nbsp;Robot&nbsp;Eyes</h1>
+    <p class="lede">Translate a sentence for a machine — then translate its reply back.</p>
+    <p style="color:var(--muted)">A language model never sees words. It only ever sees <b style="color:var(--num)">numbers</b>. You're about to feel why that matters.</p>
+    <button class="btn" id="go-start">Start →</button>
+  </section>
+
+  <!-- 2. ENCODE -->
+  <section class="screen" id="s-encode">
+    <div class="stepdot"><span class="on"></span><span></span><span></span></div>
+    <p class="eyebrow">Step 1 · Words → numbers</p>
+
+    <div id="enc-task">
+      <h2>Tap each word's number</h2>
+      <p class="small">The machine can't read the sentence — swap every piece for its number.</p>
+      <div class="bslots enc" id="enc-slots"></div>
+      <p class="nowfind" id="enc-find"></p>
+      <div class="pool" id="enc-pool"></div>
+      <div class="hint" id="enc-hint" role="status" aria-live="polite"></div>
+      <button class="undo" id="enc-undo" disabled>↶ Undo last</button>
+    </div>
+
+    <div id="enc-reveal" style="display:none;">
+      <h2>That's the whole sentence to the machine</h2>
+      <div class="codebig" id="enc-code"></div>
+      <p style="margin-top:16px;">No letters. No words. Just these numbers.</p>
+      <p style="color:var(--muted)">So when you ask <b>"how many r's in strawberry?"</b>, it's only looking at <b class="mono" style="color:var(--num)">4842 8123</b>. The letters aren't there to count.</p>
+      <button class="btn" id="enc-send">Send to machine →</button>
+    </div>
+  </section>
+
+  <!-- 3. MACHINE -->
+  <section class="screen" id="s-machine">
+    <div class="stepdot"><span class="on"></span><span class="on"></span><span></span></div>
+    <p class="eyebrow">Step 2 · Inside the machine</p>
+    <h2>Numbers in, numbers out</h2>
+    <div class="machine">
+      <p class="small" style="text-align:center; font-weight:600;">IN</p>
+      <div class="stream" id="m-in"></div>
+      <div class="grid" id="m-grid"></div>
+      <p class="churn" id="m-churn">processing…</p>
+      <p class="small" style="text-align:center; font-weight:600; margin-top:12px;">OUT</p>
+      <div class="stream" id="m-out"></div>
+    </div>
+    <p class="footnote">Symbolic view — but the point is exact: inside, only numbers move. Never words.</p>
+    <button class="btn" id="machine-next" style="display:none;">Decode the reply →</button>
+  </section>
+
+  <!-- 4. DECODE -->
+  <section class="screen" id="s-decode">
+    <div class="stepdot"><span class="on"></span><span class="on"></span><span class="on"></span></div>
+    <p class="eyebrow">Step 3 · Numbers → words</p>
+    <h2>Tap the word for each number</h2>
+    <p class="small">The machine replied — but only in numbers. Turn them back into words.</p>
+    <div class="bslots dec" id="dec-slots"></div>
+    <p class="nowfind" id="dec-find"></p>
+    <div class="pool" id="dec-pool"></div>
+    <div class="hint" id="dec-hint" role="status" aria-live="polite"></div>
+    <button class="undo" id="dec-undo" disabled>↶ Undo last</button>
+  </section>
+
+  <!-- 5. PAYOFF -->
+  <section class="screen" id="s-payoff">
+    <p class="eyebrow">The reply</p>
+    <div class="reveal">"There are <span class="hl">2</span> r's in strawberry."</div>
+    <h2>But strawberry has three.</h2>
+    <div class="strawviz">st<span class="r">r</span>awbe<span class="r">r</span><span class="r">r</span>y</div>
+    <div class="countbox">
+      <div class="countcell right"><div class="big">3</div><div class="lab">actually</div></div>
+      <div class="countcell wrong"><div class="big">2</div><div class="lab">machine said</div></div>
+    </div>
+    <p>To the machine, "strawberry" was just <b class="mono" style="color:var(--num)">4842 8123</b>. The r's were never there to count.</p>
+    <p style="font-weight:700;">You can't count what you can't see.</p>
+    <div class="share">🍓 I beat an AI at counting: strawberry has <b>3</b> r's. It only saw two numbers.</div>
+    <button class="btn green" id="play-again">Play again ↺</button>
+    <p class="footnote">The ID numbers are illustrative — they show how tokenisation works, not any specific model's real vocabulary.</p>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var DICT = [
+    {t:'How',n:1374},{t:'many',n:891},{t:'r',n:81},{t:'in',n:287},
+    {t:'straw',n:4842},{t:'berry',n:8123},{t:'?',n:30},{t:'There',n:1858},
+    {t:'are',n:389},{t:'2',n:17},{t:"'s",n:338},{t:'.',n:13},
+    {t:"How's",n:1402},{t:'men',n:752},{t:'straws',n:9001},
+    {t:'blueberry',n:6610},{t:'three',n:2771}
+  ];
+  var byNum={}; DICT.forEach(function(e){ byNum[e.n]=e.t; });
+
+  var ENCODE_WORDS=['How','many','r','in','straw','berry','?'];
+  var ENCODE_NUMS =[1374,891,81,287,4842,8123,30];
+  var OUTPUT      =[1858,389,17,81,338,287,4842,8123,13]; // There are 2 r 's in straw berry .
+
+  function $(id){return document.getElementById(id);}
+  function show(id){
+    var s=document.querySelectorAll('.screen');
+    for(var i=0;i<s.length;i++) s[i].classList.remove('active');
+    $(id).classList.add('active'); window.scrollTo(0,0);
+  }
+  function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+
+  /* ---------- generic tap-to-fill stage ---------- */
+  function Stage(opts){
+    // opts: mode 'enc'|'dec', targets [{num, givenLabel}], slotsEl, poolEl, findEl, hintEl, undoBtn, onDone
+    this.o=opts; this.cur=0; this.fills=[]; // fills[i] = pool button element
+    this.build();
+  }
+  Stage.prototype.build=function(){
+    var o=this.o, self=this;
+    // slots
+    o.slotsEl.innerHTML='';
+    o.targets.forEach(function(t,i){
+      var d=document.createElement('div'); d.className='bslot';
+      d.innerHTML='<div class="g">'+t.givenLabel+'</div><div class="f empty">·</div>';
+      o.slotsEl.appendChild(d);
+    });
+    // pool (shuffled dictionary)
+    o.poolEl.innerHTML='';
+    this.optByNum={};
+    shuffle(DICT).forEach(function(e){
+      var b=document.createElement('button'); b.type='button'; b.className='opt';
+      b.innerHTML='<span class="ot">'+e.t+'</span><span class="on">'+e.n+'</span>';
+      b.addEventListener('click',function(){ self.pick(e,b); });
+      o.poolEl.appendChild(b);
+      self.optByNum[e.n]=b;
+    });
+    o.hintEl.className='hint';
+    o.undoBtn.disabled=true;
+    o.undoBtn.onclick=function(){ self.undo(); };
+    this.refresh();
+  };
+  Stage.prototype.refresh=function(){
+    var o=this.o, slots=o.slotsEl.children;
+    for(var i=0;i<slots.length;i++) slots[i].classList.toggle('cur', i===this.cur);
+    if(this.cur<o.targets.length){
+      var t=o.targets[this.cur];
+      o.findEl.innerHTML = this.o.mode==='enc'
+        ? 'Now tap the number for <b>'+t.givenLabel+'</b>'
+        : 'Now tap the word for <b>'+t.num+'</b>';
+    } else { o.findEl.innerHTML=''; }
+    o.undoBtn.disabled = this.cur===0;
+  };
+  Stage.prototype.pick=function(entry,btn){
+    var o=this.o, t=o.targets[this.cur];
+    if(entry.n===t.num){
+      var slot=o.slotsEl.children[this.cur];
+      slot.classList.add('done');
+      var f=slot.querySelector('.f'); f.classList.remove('empty');
+      f.textContent = this.o.mode==='enc' ? entry.n : entry.t;
+      btn.disabled=true;
+      this.fills[this.cur]=btn;
+      o.hintEl.className='hint';
+      this.cur++;
+      this.refresh();
+      if(this.cur===o.targets.length){ var self=this; setTimeout(function(){ self.o.onDone(); }, 450); }
+    } else {
+      btn.classList.add('flash'); setTimeout(function(){ btn.classList.remove('flash'); },340);
+      if(this.o.mode==='enc'){
+        o.hintEl.innerHTML='That\'s the number for <b>'+entry.t+'</b> — you need <b>'+t.givenLabel+'</b>.';
+      } else {
+        o.hintEl.innerHTML='<b>'+entry.t+'</b> is '+entry.n+', not '+t.num+'.';
+      }
+      o.hintEl.className='hint show';
+    }
+  };
+  Stage.prototype.undo=function(){
+    if(this.cur===0) return;
+    this.cur--;
+    var slot=this.o.slotsEl.children[this.cur];
+    slot.classList.remove('done');
+    var f=slot.querySelector('.f'); f.classList.add('empty'); f.textContent='·';
+    if(this.fills[this.cur]){ this.fills[this.cur].disabled=false; this.fills[this.cur]=null; }
+    this.o.hintEl.className='hint';
+    this.refresh();
+  };
+
+  /* ---------- Start ---------- */
+  $('go-start').addEventListener('click', function(){ startEncode(); show('s-encode'); });
+
+  /* ---------- Encode ---------- */
+  function startEncode(){
+    $('enc-task').style.display='';
+    $('enc-reveal').style.display='none';
+    new Stage({
+      mode:'enc',
+      targets: ENCODE_WORDS.map(function(w,i){ return {num:ENCODE_NUMS[i], givenLabel:w}; }),
+      slotsEl:$('enc-slots'), poolEl:$('enc-pool'), findEl:$('enc-find'),
+      hintEl:$('enc-hint'), undoBtn:$('enc-undo'),
+      onDone:function(){
+        $('enc-code').textContent = ENCODE_NUMS.join(' ');
+        $('enc-task').style.display='none';
+        $('enc-reveal').style.display='';
+        window.scrollTo(0,0);
+      }
+    });
+  }
+  $('enc-send').addEventListener('click', function(){ show('s-machine'); runMachine(); });
+
+  /* ---------- Machine ---------- */
+  function runMachine(){
+    var mIn=$('m-in'), mOut=$('m-out'), grid=$('m-grid'), churn=$('m-churn'), next=$('machine-next');
+    mIn.innerHTML=''; mOut.innerHTML=''; grid.innerHTML=''; next.style.display='none'; churn.textContent='processing…';
+    var NODES=30, nodes=[];
+    for(var i=0;i<NODES;i++){var d=document.createElement('div');d.className='node';grid.appendChild(d);nodes.push(d);}
+    ENCODE_NUMS.forEach(function(n){var s=document.createElement('span');s.className='ntok';s.textContent=n;mIn.appendChild(s);});
+    var inChips=mIn.querySelectorAll('.ntok');
+    function emitOutput(){
+      churn.textContent='reply ready';
+      OUTPUT.forEach(function(n,k){
+        var s=document.createElement('span'); s.className='ntok out'; s.textContent=n; mOut.appendChild(s);
+        if(!reduce) setTimeout(function(){s.classList.add('in');},k*90); else s.classList.add('in');
+      });
+      var delay=reduce?0:OUTPUT.length*90+250;
+      setTimeout(function(){ next.style.display='block'; }, delay);
+    }
+    if(reduce){
+      for(var j=0;j<nodes.length;j++) if(j%3===0) nodes[j].classList.add('lit');
+      for(var c=0;c<inChips.length;c++) inChips[c].classList.add('in');
+      emitOutput(); return;
+    }
+    for(var a=0;a<inChips.length;a++){(function(el,idx){setTimeout(function(){el.classList.add('in');},120+idx*120);})(inChips[a],a);}
+    var waves=4, perWave=Math.ceil(NODES/waves), step=0;
+    var wInt=setInterval(function(){
+      for(var p=0;p<perWave;p++){ (function(node){ if(!node)return; node.classList.add('lit'); setTimeout(function(){node.classList.remove('lit');},380); })(nodes[(step*perWave+p)%NODES]); }
+      step++; if(step>=waves+1){ clearInterval(wInt); emitOutput(); }
+    },320);
+  }
+  $('machine-next').addEventListener('click', function(){ startDecode(); show('s-decode'); });
+
+  /* ---------- Decode ---------- */
+  function startDecode(){
+    new Stage({
+      mode:'dec',
+      targets: OUTPUT.map(function(n){ return {num:n, givenLabel:n}; }),
+      slotsEl:$('dec-slots'), poolEl:$('dec-pool'), findEl:$('dec-find'),
+      hintEl:$('dec-hint'), undoBtn:$('dec-undo'),
+      onDone:function(){ setTimeout(function(){ show('s-payoff'); }, 250); }
+    });
+  }
+
+  /* ---------- Play again ---------- */
+  $('play-again').addEventListener('click', function(){ startEncode(); show('s-start'); });
+
+})();
+</script>
+</body>
+</html>
